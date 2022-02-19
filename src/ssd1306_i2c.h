@@ -54,6 +54,9 @@ struct SSD1306_State_s {
     uint16_t screenBufferLength;
     enum SSD1306_AddressingMode AddressingMode;
 
+    uint8_t curcol;
+    uint8_t currow;
+
     void (*i2c_send_bytes)(uint32_t i2c, uint8_t addr, const uint8_t *data, size_t len, bool *ok);
     void (*i2c_read_bytes)(uint32_t i2c, uint8_t addr, uint8_t *data, size_t len, bool *ok);
 };

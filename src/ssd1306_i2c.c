@@ -182,6 +182,16 @@ void ssd1306_init(struct SSD1306_State_s *state,
     ssd1306_adjustVcomDeselectLevel(state, 0x20);
     ssd1306_setDisplayOn(state, true);
     ssd1306_switchOLEDOn(state, true);
+
+    ssd1306_setMemoryAddressingMode(state, Page);
+    state->AddressingMode = Page;
+
+    ssd1306_setPage(state, 0);
+    state->currow = 0;
+
+    ssd1306_setColumn(state, 0);
+    state->curcol = 0;
+
 }
 
 /**
@@ -463,14 +473,53 @@ void ssd1306_setColumn(struct SSD1306_State_s *state, uint8_t column)
 }
 // -------------------- Graphics methods ---------------------------
 
+static void ssd1306_next_position(struct SSD1306_State_s *state)
+{
+    switch (state->AddressingMode)
+    {
+    case Page:
+        state->curcol = (state->curcol + 1) % state->WIDTH;
+        break;
+    case Vertical:
+        state->curcol++;
+        if (state->curcol == state->WIDTH)
+        {
+            state->curcol = 0;
+            state->currow++;
+        }
+        if (state->currow == state->HEIGHT/8)
+        {
+            state->currow = 0;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 /**
  * Draw 8 bit column in Page mode
  */
 void ssd1306_draw_block(struct SSD1306_State_s *state, uint8_t row, uint8_t col, uint8_t data)
 {
-    ssd1306_setMemoryAddressingMode(state, Page);
-    ssd1306_setPage(state, row);
-    ssd1306_setColumn(state, col);
+    if (state->AddressingMode != Page)
+    {
+        ssd1306_setMemoryAddressingMode(state, Page);
+        state->AddressingMode = Page;
+    }
+
+    if (state->currow != row)
+    {
+        ssd1306_setPage(state, row);
+        state->currow = row;
+    }
+    
+    if (state->curcol != col)
+    {
+        ssd1306_setColumn(state, col);
+        state->curcol = col;
+    }
 
     ssd1306_send_data(state, DATAONLY, data);
+    ssd1306_next_position(state);
 }
