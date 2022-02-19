@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017, Stanislav Lakhtin.
+ * Copyright (c) 2022, Vladislav Tsendrovskii
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,100 +28,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SSD1306_LIBRARY_SSD1306_I2C_H
 #include <ssd1306_i2c.h>
-#endif
 
 #include <string.h>
 #include <stdlib.h>
 #include <pentacom_font.h>
 #include "pentacom_font.h"
 
+#define I2C_COMMAND 0x00
+#define I2C_DATA 0x40
 
-uint32_t I2C_OLED = I2C2;
-uint8_t OLED_ADDRESS = DEFAULT_7bit_OLED_SLAVE_ADDRESS;
-uint8_t WIDTH = 128;
-uint8_t HEIGHT = 32;
-uint16_t screenBufferLength = DEFAULTBUFFERLENGTH;
-MODE AddressingMode = Page;
+// Fundamental Command Table
+#define SSD1306_SET_CONTROL 0x81 // Double byte command to select 1 out of 256 contrast steps. Contrast increases as the value increases.
+#define SSD1306_RESET 0x7F
+#define SSD1306_DISPLAY_ON_RAM 0xA4  // Resume to RAM content display (RESET)
+#define SSD1306_DISPLAY_NO_RAM 0xA5  // Output ignores RAM content
+#define SSD1306_SET_NORMAL 0xA6      // Normal display (RESET)
+#define SSD1306_SET_INVERSE 0xA7     // Inverse display
+#define SSD1306_SET_DISPLAY_OFF 0xAE // Display OFF (sleep mode)
+#define SSD1306_SET_DISPLAY_ON 0xAF  // Display ON in normal mode
 
-
-// just noise to check a screen
-// todo make logo or something else
-
-uint8_t screenRAM[DEFAULTBUFFERLENGTH] = {
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x1e,0x00,0x00,0x00,0x00,0x00,0x00,0x06,0x00
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xc0
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x03,0x00,0x00,0xff,0xff,0xff,0xff,0xff,0xc0,0x30
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x1f,0xff,0xff,0xff,0xfe,0x00,0x00,0x00,0x3c,0x0c
-    ,0x00,0x00,0x00,0x00,0x00,0x03,0xf0,0x03,0xe7,0xf6,0x01,0xf0,0x00,0x00,0x07,0x03
-    ,0x00,0x08,0x00,0x00,0x00,0x3c,0x10,0x3c,0x78,0x01,0x80,0x0f,0x00,0x00,0x00,0xe0
-    ,0x00,0x08,0x00,0x00,0x03,0xc0,0x21,0xc7,0x80,0x00,0x40,0x00,0xe0,0x00,0x00,0x18
-    ,0x00,0x08,0x00,0x00,0x3c,0x00,0x46,0x38,0x00,0x00,0x20,0x00,0x18,0x00,0x00,0x06
-
-    ,0x00,0x08,0x00,0x00,0xc7,0xfc,0x48,0x40,0x00,0x00,0x20,0x00,0x04,0x00,0x00,0x01
-    ,0x00,0x08,0x00,0x03,0x38,0x03,0x90,0x80,0x00,0x01,0xff,0xe0,0x02,0x00,0x00,0x00
-    ,0x00,0x08,0x00,0x05,0xc0,0x00,0x90,0x80,0x00,0x0e,0x10,0x1c,0x01,0x80,0x00,0x00
-    ,0x00,0x08,0x00,0x1e,0x00,0x00,0x90,0x80,0x00,0x18,0x10,0x02,0x00,0x80,0x00,0x00
-    ,0x00,0x08,0x00,0x28,0x00,0x00,0x88,0x40,0x00,0x18,0x30,0x01,0x00,0x40,0x00,0x00
-    ,0x00,0x08,0x00,0x30,0x00,0x00,0x48,0x20,0x00,0x0c,0x20,0x03,0x00,0x40,0x00,0x00
-    ,0x00,0x08,0x00,0x60,0x00,0x00,0x44,0x20,0x00,0x00,0x20,0x1c,0x00,0x40,0x00,0x03
-    ,0x00,0x08,0x00,0x60,0x00,0x00,0x24,0x10,0x00,0x00,0x41,0xe0,0x00,0x40,0x00,0x0e
-
-    ,0x00,0x00,0x00,0xa0,0x00,0x00,0x32,0x0e,0x00,0x00,0xfe,0x00,0x01,0xc0,0x00,0x30
-    ,0x00,0x00,0x00,0xa0,0x00,0x00,0x09,0x81,0xff,0xff,0x80,0x00,0x0e,0x00,0x01,0xc0
-    ,0x00,0x00,0x00,0x90,0x00,0x00,0x04,0x40,0x00,0x06,0x00,0x00,0xf0,0x00,0x06,0x00
-    ,0x00,0x00,0x00,0x8c,0x00,0x00,0x03,0x30,0x00,0x08,0x00,0x1f,0x00,0x00,0x78,0x01
-    ,0x00,0x00,0x00,0x83,0x00,0x00,0x00,0xcc,0x00,0x30,0x07,0xe0,0x00,0x03,0x80,0x1e
-    ,0x00,0x00,0x00,0x80,0xc0,0x00,0x00,0x33,0xff,0xff,0xf8,0x00,0x00,0x7c,0x01,0xe0
-    ,0x00,0x21,0x00,0x80,0x38,0x00,0x00,0x0e,0x03,0x00,0x00,0x00,0x3f,0x80,0x3e,0x00
-    ,0x00,0x7f,0x80,0x80,0x07,0x00,0x00,0x01,0xec,0x00,0x00,0x1f,0xc0,0x7f,0xc0,0x00
-
-    ,0x00,0x00,0x00,0x40,0x00,0xfc,0x00,0x00,0x3f,0xf0,0x7f,0xef,0xff,0x80,0x00,0x00
-    ,0x00,0x33,0x00,0x20,0x00,0x03,0xff,0xff,0xff,0xff,0xff,0xf0,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x20,0x00,0x00,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x18,0x00,0x00,0x00,0x78,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x1e,0x00,0x06,0x00,0x00,0x03,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x02,0x00,0x01,0xf0,0x01,0xfc,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x00,0x0f,0xfe,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x1e,0x00,0x00,0x00,0x00,0x00,0x00,0x06,0x00
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xc0
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x03,0x00,0x00,0xff,0xff,0xff,0xff,0xff,0xc0,0x30
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x1f,0xff,0xff,0xff,0xfe,0x00,0x00,0x00,0x3c,0x0c
-    ,0x00,0x00,0x00,0x00,0x00,0x03,0xf0,0x03,0xe7,0xf6,0x01,0xf0,0x00,0x00,0x07,0x03
-    ,0x00,0x08,0x00,0x00,0x00,0x3c,0x10,0x3c,0x78,0x01,0x80,0x0f,0x00,0x00,0x00,0xe0
-    ,0x00,0x08,0x00,0x00,0x03,0xc0,0x21,0xc7,0x80,0x00,0x40,0x00,0xe0,0x00,0x00,0x18
-    ,0x00,0x08,0x00,0x00,0x3c,0x00,0x46,0x38,0x00,0x00,0x20,0x00,0x18,0x00,0x00,0x06
-
-    ,0x00,0x08,0x00,0x00,0xc7,0xfc,0x48,0x40,0x00,0x00,0x20,0x00,0x04,0x00,0x00,0x01
-    ,0x00,0x08,0x00,0x03,0x38,0x03,0x90,0x80,0x00,0x01,0xff,0xe0,0x02,0x00,0x00,0x00
-    ,0x00,0x08,0x00,0x05,0xc0,0x00,0x90,0x80,0x00,0x0e,0x10,0x1c,0x01,0x80,0x00,0x00
-    ,0x00,0x08,0x00,0x1e,0x00,0x00,0x90,0x80,0x00,0x18,0x10,0x02,0x00,0x80,0x00,0x00
-    ,0x00,0x08,0x00,0x28,0x00,0x00,0x88,0x40,0x00,0x18,0x30,0x01,0x00,0x40,0x00,0x00
-    ,0x00,0x08,0x00,0x30,0x00,0x00,0x48,0x20,0x00,0x0c,0x20,0x03,0x00,0x40,0x00,0x00
-    ,0x00,0x08,0x00,0x60,0x00,0x00,0x44,0x20,0x00,0x00,0x20,0x1c,0x00,0x40,0x00,0x03
-    ,0x00,0x08,0x00,0x60,0x00,0x00,0x24,0x10,0x00,0x00,0x41,0xe0,0x00,0x40,0x00,0x0e
-
-    ,0x00,0x00,0x00,0xa0,0x00,0x00,0x32,0x0e,0x00,0x00,0xfe,0x00,0x01,0xc0,0x00,0x30
-    ,0x00,0x00,0x00,0xa0,0x00,0x00,0x09,0x81,0xff,0xff,0x80,0x00,0x0e,0x00,0x01,0xc0
-    ,0x00,0x00,0x00,0x90,0x00,0x00,0x04,0x40,0x00,0x06,0x00,0x00,0xf0,0x00,0x06,0x00
-    ,0x00,0x00,0x00,0x8c,0x00,0x00,0x03,0x30,0x00,0x08,0x00,0x1f,0x00,0x00,0x78,0x01
-    ,0x00,0x00,0x00,0x83,0x00,0x00,0x00,0xcc,0x00,0x30,0x07,0xe0,0x00,0x03,0x80,0x1e
-    ,0x00,0x00,0x00,0x80,0xc0,0x00,0x00,0x33,0xff,0xff,0xf8,0x00,0x00,0x7c,0x01,0xe0
-    ,0x00,0x21,0x00,0x80,0x38,0x00,0x00,0x0e,0x03,0x00,0x00,0x00,0x3f,0x80,0x3e,0x00
-    ,0x00,0x7f,0x80,0x80,0x07,0x00,0x00,0x01,0xec,0x00,0x00,0x1f,0xc0,0x7f,0xc0,0x00
-
-    ,0x00,0x00,0x00,0x40,0x00,0xfc,0x00,0x00,0x3f,0xf0,0x7f,0xef,0xff,0x80,0x00,0x00
-    ,0x00,0x33,0x00,0x20,0x00,0x03,0xff,0xff,0xff,0xff,0xff,0xf0,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x20,0x00,0x00,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x18,0x00,0x00,0x00,0x78,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x1e,0x00,0x06,0x00,0x00,0x03,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x02,0x00,0x01,0xf0,0x01,0xfc,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x00,0x0f,0xfe,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-};
+// tools
+#define DATAONLY (uint8_t)0b01000000
+#define COMMAND (uint8_t)0b00000000
 
 /* Device memory organised in 128 horizontal pixel and up to 8 rows of byte
  *
@@ -192,32 +122,12 @@ uint8_t screenRAM[DEFAULTBUFFERLENGTH] = {
  *      3 byte command you MUST send each of them separatelly byte per byte in start->address->cmd-zero->byte->ack sequences.
  */
 
-uint32_t reg32 __attribute__((unused));
-
-void ssd1306_start(void) {
-  i2c_send_start(I2C_OLED);
-  while (_IF_SB(I2C_OLED));
-  i2c_send_7bit_address(I2C_OLED, OLED_ADDRESS, I2C_WRITE);
-  while (_IF_ADDR(I2C_OLED));
-  /* Cleaning ADDR condition sequence. */
-  reg32 = I2C_SR2(I2C_OLED);
-}
-
-void ssd1306_stop(void) {
-  i2c_send_stop(I2C_OLED);
-  while (_IF_BTF(I2C_OLED));
-}
-
-void ssd1306_send(uint8_t spec) {
-  i2c_send_data(I2C_OLED, spec);
-  while (_IF_TxE(I2C_OLED));
-}
-
-void ssd1306_send_data(uint8_t spec, uint8_t data) {
-  ssd1306_start();
-  ssd1306_send(spec);
-  ssd1306_send(data);
-  ssd1306_stop();
+bool ssd1306_send_data(struct SSD1306_State_s *state, uint8_t spec, uint8_t data)
+{
+    bool ok;
+    uint8_t block[2] = {spec, data};
+    state->i2c_send_bytes(state->I2C_OLED, state->OLED_ADDRESS, block, 2, &ok);
+    return ok;
 }
 
 /**
@@ -244,27 +154,31 @@ void ssd1306_send_data(uint8_t spec, uint8_t data) {
   * @param width -- width of the display
   * @param height -- height of the display
   */
-void ssd1306_init(uint32_t i2c, uint8_t address, uint8_t width, uint8_t height) {
-  I2C_OLED = i2c;
-  OLED_ADDRESS = address;
-  WIDTH = width;
-  HEIGHT = height;
-  screenBufferLength = (uint16_t) (HEIGHT / 8 * WIDTH);
 
-  // now we can and should send a lot commands
-  ssd1306_switchOLEDOn(false); // 0xae
-  ssd1306_setOscillatorFrequency(0x80);  // D5h 0x80
-  ssd1306_setMultiplexRatio(HEIGHT-1);
-  ssd1306_setInverse(false); // normal display
-  ssd1306_chargePump(true);
-  ssd1306_setContrast(0x3F);
-  ssd1306_setPrecharge(0x22);
-  ssd1306_setCOMPinsHardwareConfiguration(0x02);
-  ssd1306_adjustVcomDeselectLevel(0x20);
-  ssd1306_setDisplayOn(true);
-  ssd1306_switchOLEDOn(true);
+void ssd1306_init(struct SSD1306_State_s *state,
+                  uint32_t i2c, uint8_t address,
+                  uint8_t width, uint8_t height,
+                  void (*i2c_send_bytes)(uint32_t i2c, uint8_t addr, const uint8_t *data, size_t len, bool *ok),
+                  void (*i2c_read_bytes)(uint32_t i2c, uint8_t addr, uint8_t *data, size_t len, bool *ok))
+{
+    state->I2C_OLED = i2c;
+    state->OLED_ADDRESS = address;
+    state->WIDTH = width;
+    state->HEIGHT = height;
+    state->screenBufferLength = (uint16_t)(state->HEIGHT / 8 * state->WIDTH);
 
-  ssd1306_refresh();
+    // now we can and should send a lot commands
+    ssd1306_switchOLEDOn(state, false);          // 0xae
+    ssd1306_setOscillatorFrequency(state, 0x80); // D5h 0x80
+    ssd1306_setMultiplexRatio(state, state->HEIGHT - 1);
+    ssd1306_setInverse(state, false); // normal display
+    ssd1306_chargePump(state, true);
+    ssd1306_setContrast(state, 0x3F);
+    ssd1306_setPrecharge(state, 0x22);
+    ssd1306_setCOMPinsHardwareConfiguration(state, 0x02);
+    ssd1306_adjustVcomDeselectLevel(state, 0x20);
+    ssd1306_setDisplayOn(state, true);
+    ssd1306_switchOLEDOn(state, true);
 }
 
 /**
@@ -277,10 +191,12 @@ void ssd1306_init(uint32_t i2c, uint8_t address, uint8_t width, uint8_t height) 
   * @param mode -- select Mode
   */
 
-void ssd1306_setMemoryAddressingMode(MODE mode) {
-  // send initial command to the device
-  ssd1306_send_data(COMMAND, 0x20);
-  ssd1306_send_data(COMMAND, mode);
+void ssd1306_setMemoryAddressingMode(struct SSD1306_State_s *state, enum SSD1306_AddressingMode mode)
+{
+    state->AddressingMode = mode;
+    // send initial command to the device
+    ssd1306_send_data(state, COMMAND, 0x20);
+    ssd1306_send_data(state, COMMAND, mode);
 }
 
 /** Set Column Address [Space] (21h)
@@ -300,10 +216,11 @@ void ssd1306_setMemoryAddressingMode(MODE mode) {
   * Note: This command is only for horizontal or vertical addressing mode!
   */
 
-void ssd1306_setColumnAddressScope(uint8_t lower, uint8_t upper) {
-  ssd1306_send_data(COMMAND, 0x21);
-  ssd1306_send_data(COMMAND, lower);
-  ssd1306_send_data(COMMAND, upper);
+void ssd1306_setColumnAddressScope(struct SSD1306_State_s *state, uint8_t lower, uint8_t upper)
+{
+    ssd1306_send_data(state, COMMAND, 0x21);
+    ssd1306_send_data(state, COMMAND, lower);
+    ssd1306_send_data(state, COMMAND, upper);
 }
 
 /** Set Page Address (22h)
@@ -325,18 +242,20 @@ void ssd1306_setColumnAddressScope(uint8_t lower, uint8_t upper) {
   *  Note: This command is only for horizontal or vertical addressing mode.
   */
 
-void ssd1306_setPageAddressScope(uint8_t lower, uint8_t upper) {
-  ssd1306_send_data(COMMAND, 0x22);
-  ssd1306_send_data(COMMAND, lower);
-  ssd1306_send_data(COMMAND, upper);
+void ssd1306_setPageAddressScope(struct SSD1306_State_s *state, uint8_t lower, uint8_t upper)
+{
+    ssd1306_send_data(state, COMMAND, 0x22);
+    ssd1306_send_data(state, COMMAND, lower);
+    ssd1306_send_data(state, COMMAND, upper);
 }
 
 /** Set Page Start Address For Page Addressing Mode (0xB0-0xB7) command
  *  According the documentation Page MUST be from 0 to 7
  *  @param pageNum -- from 0 to 7
  */
-void ssd1306_setPageStartAddressForPageAddressingMode(uint8_t pageNum) {
-  ssd1306_send_data(COMMAND, (uint8_t) (0xb0 | (pageNum & 0b00000111)));
+void ssd1306_setPageStartAddressForPageAddressingMode(struct SSD1306_State_s *state, uint8_t pageNum)
+{
+    ssd1306_send_data(state, COMMAND, (uint8_t)(0xb0 | (pageNum & 0b00000111)));
 }
 
 /** Set Display Start Line (40h~7Fh)
@@ -346,8 +265,9 @@ void ssd1306_setPageStartAddressForPageAddressingMode(uint8_t pageNum) {
  *  @param startLine -- from 0 to 63
  */
 
-void ssd1306_setDisplayStartLine(uint8_t startLine) {
-  ssd1306_send_data(COMMAND, (uint8_t) (0x40 | (startLine & 0b00111111)));
+void ssd1306_setDisplayStartLine(struct SSD1306_State_s *state, uint8_t startLine)
+{
+    ssd1306_send_data(state, COMMAND, (uint8_t)(0x40 | (startLine & 0b00111111)));
 }
 
 /** Set Contrast Control for BANK0 (81h)
@@ -356,9 +276,10 @@ void ssd1306_setDisplayStartLine(uint8_t startLine) {
  * segment output current increwhile (_IF_TxE(I2C_OLED));ases as the contrast step value increases.
  * @param value from 0 to 255
  */
-void ssd1306_setContrast(uint8_t value) {
-  ssd1306_send_data(COMMAND, 0x81);
-  ssd1306_send_data(COMMAND, value);
+void ssd1306_setContrast(struct SSD1306_State_s *state, uint8_t value)
+{
+    ssd1306_send_data(state, COMMAND, 0x81);
+    ssd1306_send_data(state, COMMAND, value);
 }
 
 /** Set Pre-charge Period (D9h)
@@ -370,9 +291,10 @@ void ssd1306_setContrast(uint8_t value) {
  * @param value -- experimental typical value is 0xF1
  */
 
-void ssd1306_setPrecharge(uint8_t value) {
-  ssd1306_send_data(COMMAND, 0xd9);
-  ssd1306_send_data(COMMAND, value);
+void ssd1306_setPrecharge(struct SSD1306_State_s *state, uint8_t value)
+{
+    ssd1306_send_data(state, COMMAND, 0xd9);
+    ssd1306_send_data(state, COMMAND, value);
 }
 
 /**
@@ -384,9 +306,10 @@ void ssd1306_setPrecharge(uint8_t value) {
  *
  * @param resume -- if it will be true, then DISPLAY will go ON and redraw content from RAM
  */
-void ssd1306_setDisplayOn(bool resume) {
-  uint8_t cmd = (uint8_t) (resume ? 0xA4 : 0xA5);
-  ssd1306_send_data(COMMAND, cmd);
+void ssd1306_setDisplayOn(struct SSD1306_State_s *state, bool resume)
+{
+    uint8_t cmd = (uint8_t)(resume ? 0xA4 : 0xA5);
+    ssd1306_send_data(state, COMMAND, cmd);
 }
 
 /** Set Normal/Inverse Display (A6h/A7h)
@@ -395,9 +318,10 @@ void ssd1306_setDisplayOn(bool resume) {
  *  “ON” pixel while in inverse display a RAM data of 0 indicates an “ON” pixel.
  *  @param inverse -- if true display will be inverted
  */
-void ssd1306_setInverse(bool inverse) {
-  uint8_t cmd = (uint8_t) (inverse ? 0xA7 : 0xA6);
-  ssd1306_send_data(COMMAND, cmd);
+void ssd1306_setInverse(struct SSD1306_State_s *state, bool inverse)
+{
+    uint8_t cmd = (uint8_t)(inverse ? 0xA7 : 0xA6);
+    ssd1306_send_data(state, COMMAND, cmd);
 }
 
 /** Set Display ON/OFF (AEh/AFh)
@@ -410,13 +334,16 @@ void ssd1306_setInverse(bool inverse) {
  *  AFh : Display ON
  */
 
-void ssd1306_switchOLEDOn(bool goOn) {
-  if (goOn) {
-    ssd1306_send_data(COMMAND, 0xAF);
-  } else
-    ssd1306_send_data(COMMAND, 0xAE);
+void ssd1306_switchOLEDOn(struct SSD1306_State_s *state, bool goOn)
+{
+    if (goOn)
+    {
+        ssd1306_send_data(state, COMMAND, 0xAF);
+    }
+    else
+        ssd1306_send_data(state, COMMAND, 0xAE);
 }
- /** Charge Pump Capacitor (8D)
+/** Charge Pump Capacitor (8D)
  *
  *  The internal regulator circuit in SSD1306 accompanying only 2 external capacitors can generate a
  *  7.5V voltage supply, V CC, from a low voltage supply input, V BAT . The V CC is the voltage supply to the
@@ -430,30 +357,33 @@ void ssd1306_switchOLEDOn(bool goOn) {
  * is close to zero.
  */
 
- void ssd1306_chargePump(bool chargeOn) {
-   ssd1306_send_data(COMMAND, 0x8D);
-   if (chargeOn)
-     ssd1306_send_data(COMMAND, 0x14);
-   else
-     ssd1306_send_data(COMMAND, 0x10);
- }
+void ssd1306_chargePump(struct SSD1306_State_s *state, bool chargeOn)
+{
+    ssd1306_send_data(state, COMMAND, 0x8D);
+    if (chargeOn)
+        ssd1306_send_data(state, COMMAND, 0x14);
+    else
+        ssd1306_send_data(state, COMMAND, 0x10);
+}
 /** Set Display Offset (D3h)
  * The command specifies the mapping of the display start line to one of
  * COM0~COM63 (assuming that COM0 is the display start line then the display start line register is equal to 0).
  * @param verticalShift -- from 0 to 63
  */
 
-void ssd1306_setDisplayOffset(uint8_t verticalShift) {
-  ssd1306_send_data(COMMAND, 0xd3);
-  ssd1306_send_data(COMMAND, verticalShift);
+void ssd1306_setDisplayOffset(struct SSD1306_State_s *state, uint8_t verticalShift)
+{
+    ssd1306_send_data(state, COMMAND, 0xd3);
+    ssd1306_send_data(state, COMMAND, verticalShift);
 }
 
 /** Set VcomH Deselect Level (DBh)
  * This is a special command to adjust of Vcom regulator output.
  */
-void ssd1306_adjustVcomDeselectLevel(uint8_t value) {
-  ssd1306_send_data(COMMAND, 0xdb);
-  ssd1306_send_data(COMMAND, value);
+void ssd1306_adjustVcomDeselectLevel(struct SSD1306_State_s *state, uint8_t value)
+{
+    ssd1306_send_data(state, COMMAND, 0xdb);
+    ssd1306_send_data(state, COMMAND, value);
 }
 
 /** Set Display Clock Divide Ratio/ Oscillator Frequency (D5h)
@@ -469,19 +399,22 @@ void ssd1306_adjustVcomDeselectLevel(uint8_t value) {
  *
  * @param value -- default value is 0x80
  */
-void ssd1306_setOscillatorFrequency(uint8_t value) {
-  ssd1306_send_data(COMMAND, 0xd5);
-  ssd1306_send_data(COMMAND, value);
+void ssd1306_setOscillatorFrequency(struct SSD1306_State_s *state, uint8_t value)
+{
+    ssd1306_send_data(state, COMMAND, 0xd5);
+    ssd1306_send_data(state, COMMAND, value);
 }
 
-void ssd1306_setMultiplexRatio(uint8_t ratio) {
-  ssd1306_send_data(COMMAND, 0xa8);
-  ssd1306_send_data(COMMAND, ratio);
+void ssd1306_setMultiplexRatio(struct SSD1306_State_s *state, uint8_t ratio)
+{
+    ssd1306_send_data(state, COMMAND, 0xa8);
+    ssd1306_send_data(state, COMMAND, ratio);
 }
 
-void ssd1306_setCOMPinsHardwareConfiguration(uint8_t val){
-  ssd1306_send_data(COMMAND, 0xda);
-  ssd1306_send_data(COMMAND, 0b00110010 & val);
+void ssd1306_setCOMPinsHardwareConfiguration(struct SSD1306_State_s *state, uint8_t val)
+{
+    ssd1306_send_data(state, COMMAND, 0xda);
+    ssd1306_send_data(state, COMMAND, 0b00110010 & val);
 }
 
 /**
@@ -490,8 +423,9 @@ void ssd1306_setCOMPinsHardwareConfiguration(uint8_t val){
  *
  * NOTE: It command is fit ONLY for Page mode
  */
-void ssd1306_setPage(uint8_t page) {
-  ssd1306_send_data(COMMAND, (uint8_t) (0xb0 | (0b00000111 & page)));
+void ssd1306_setPage(struct SSD1306_State_s *state, uint8_t page)
+{
+    ssd1306_send_data(state, COMMAND, (uint8_t)(0xb0 | (0b00000111 & page)));
 }
 
 /**
@@ -517,89 +451,23 @@ void ssd1306_setPage(uint8_t page) {
  *
  * NOTE: It command is fit ONLY for Page mode
  */
-void ssd1306_setColumn(uint8_t column) {
-  uint8_t cmd = (uint8_t) (0x0f & column);
-  ssd1306_send_data(COMMAND, cmd);
-  cmd = (uint8_t) (0x10 | (column >> 4));
-  ssd1306_send_data(COMMAND, cmd);
+void ssd1306_setColumn(struct SSD1306_State_s *state, uint8_t column)
+{
+    uint8_t cmd = (uint8_t)(0x0f & column);
+    ssd1306_send_data(state, COMMAND, cmd);
+    cmd = (uint8_t)(0x10 | (column >> 4));
+    ssd1306_send_data(state, COMMAND, cmd);
 }
 // -------------------- Graphics methods ---------------------------
 
 /**
- *
- * @param screenRAMClear -- clear or not MCU screenRAM. If not MCU will store buffer and can repaint it.
+ * Draw 8 bit column in Page mode
  */
+void ssd1306_draw_block(struct SSD1306_State_s *state, uint8_t row, uint8_t col, uint8_t data)
+{
+    ssd1306_setMemoryAddressingMode(state, Page);
+    ssd1306_setPage(state, row);
+    ssd1306_setColumn(state, col);
 
-void ssd1306_clear(void) {
-  /*ssd1306_setMemoryAddressingMode(Horizontal);
-  ssd1306_setColumnAddressScope(0,WIDTH-1);
-  ssd1306_setPageAddressScope(0,HEIGHT/8-1);
-
-  for (uint16_t i=0; i < screenBufferLength; i++) {
-    ssd1306_send_data(DATAONLY, 0x00);
-  }*/
-  for (uint16_t i=0; i<screenBufferLength; i++)
-    screenRAM[i] = 0;
-    //memset(screenRAM, 0x00, screenBufferLength); //TODO check if "memset" is safe in our env
-}
-
-/**
- * Send (and display if OLED is ON) RAM buffer to device
- */
-void ssd1306_refresh(void) {
-  ssd1306_setMemoryAddressingMode(Horizontal);
-  ssd1306_setColumnAddressScope(0,WIDTH-1);
-  ssd1306_setPageAddressScope(0,HEIGHT/8-1);
-  ssd1306_start();
-  ssd1306_send(DATAONLY);
-  for (uint16_t i=0; i < screenBufferLength; i++) {
-    i2c_send_data(I2C_OLED, screenRAM[i]); //todo make it with DMA later
-    while (_IF_TxE(I2C_OLED));
-  }
-  ssd1306_stop();
-}
-
-void ssd1306_drawVPattern(uint8_t x, int8_t y, uint8_t pattern) {
-  if ( y > HEIGHT || y < (-7) || x > WIDTH )
-     return;
-  uint8_t yy = abs(y) % 8;
-  if ( y<0 )
-    screenRAM[ y/8*WIDTH + x ] |= pattern >> yy;
-  else if ( y>23 )
-    screenRAM[ y/8*WIDTH + x] |= pattern << yy;
-  else {
-    if ( yy!=0 ) {
-      screenRAM[y/8*WIDTH + x] |= pattern << yy;
-      screenRAM[(y/8+1)*WIDTH + x] |= pattern >> (8-yy);
-    } else
-      screenRAM[y/8*WIDTH + x] |= pattern;
-  }
-}
-
-void ssd1306_drawWCharStr(uint8_t x, int8_t y, Color color, WrapType wrType, wchar_t *str) {
-  wchar_t symbol = 0x00;
-  uint16_t curPos = 0;
-  uint8_t xx = x; int8_t yy = y;
-  do {
-    symbol = str[curPos];
-    const FontChar_t *charCur = getCharacter(symbol);
-    if ((charCur->size+xx) >= (WIDTH-1) || (symbol == L'\n'))
-      switch (wrType) {
-        case nowrap:
-          return;
-        case wrapDisplay:
-          xx = 0;
-          yy += 8;
-          break;
-        case wrapCoord:
-          xx = x;
-          yy += 8;
-      }
-    for (uint8_t i=0; i<charCur->size; i++){
-      uint8_t p = (color==white) ? charCur->l[i]: ~charCur->l[i];
-      ssd1306_drawVPattern(xx,yy, p);
-      xx += 1;
-    }
-    curPos += 1;
-  } while (symbol != 0x00);
+    ssd1306_send_data(state, DATAONLY, data);
 }
