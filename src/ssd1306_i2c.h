@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // address of device is // 011110+SA0+RW - 0x3C or 0x3D
 

@@ -167,6 +167,9 @@ void ssd1306_init(struct SSD1306_State_s *state,
     state->HEIGHT = height;
     state->screenBufferLength = (uint16_t)(state->HEIGHT / 8 * state->WIDTH);
 
+    state->i2c_read_bytes = i2c_read_bytes;
+    state->i2c_send_bytes = i2c_send_bytes;
+
     // now we can and should send a lot commands
     ssd1306_switchOLEDOn(state, false);          // 0xae
     ssd1306_setOscillatorFrequency(state, 0x80); // D5h 0x80
