@@ -32,20 +32,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define _swap(a, b) { uint8_t t = a; a = b; b = t; }
-#define _bitSet(x) (1 << (x))
-#define _bitClear(x) (~(1 << x))
-#define _bitCheck(number, x) (number >> x) & 1
-
 // address of device is // 011110+SA0+RW - 0x3C or 0x3D
 
 #define DEFAULT_7bit_OLED_SLAVE_ADDRESS 0x3C
 
 // Addressing mode
-
-#ifndef DEFAULTBUFFERLENGTH
-#define DEFAULTBUFFERLENGTH 1024
-#endif
 
 enum SSD1306_AddressingMode {
   Horizontal  = 0b00,
@@ -61,7 +52,6 @@ struct SSD1306_State_s {
     uint8_t HEIGHT;
     uint16_t screenBufferLength;
     enum SSD1306_AddressingMode AddressingMode;
-    uint8_t screenRAM[DEFAULTBUFFERLENGTH];
 
     void (*i2c_send_bytes)(uint32_t i2c, uint8_t addr, const uint8_t *data, size_t len, bool *ok);
     void (*i2c_read_bytes)(uint32_t i2c, uint8_t addr, uint8_t *data, size_t len, bool *ok);
