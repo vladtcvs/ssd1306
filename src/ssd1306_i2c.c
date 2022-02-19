@@ -32,8 +32,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <pentacom_font.h>
-#include "pentacom_font.h"
 
 #define I2C_COMMAND 0x00
 #define I2C_DATA 0x40
@@ -480,7 +478,7 @@ static void ssd1306_next_position(struct SSD1306_State_s *state)
     case Page:
         state->curcol = (state->curcol + 1) % state->WIDTH;
         break;
-    case Vertical:
+    case Horizontal:
         state->curcol++;
         if (state->curcol == state->WIDTH)
         {
@@ -490,6 +488,18 @@ static void ssd1306_next_position(struct SSD1306_State_s *state)
         if (state->currow == state->HEIGHT/8)
         {
             state->currow = 0;
+        }
+        break;
+    case Vertical:
+        state->currow++;
+        if (state->currow == state->HEIGHT/8)
+        {
+            state->currow = 0;
+            state->curcol++;
+        }
+        if (state->curcol == state->WIDTH)
+        {
+            state->curcol = 0;
         }
         break;
     default:
